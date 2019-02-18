@@ -1,12 +1,16 @@
-﻿namespace Pagamento2.Net.Entidades
+﻿namespace Pagamento2Net.Entidades
 {
-    public class Endereço
+    public class Endereco
     {
         public string Rua { get; set; } = string.Empty;
         public string Número { get; set; } = string.Empty;
         public string Complemento { get; set; } = string.Empty;
         public string Bairro { get; set; } = string.Empty;
         public string Cidade { get; set; } = string.Empty;
+
+        /// <summary>
+        /// UF - Ex: SP
+        /// </summary>
         public string Estado { get; set; } = string.Empty;
         public string CEP { get; set; } = string.Empty;
 

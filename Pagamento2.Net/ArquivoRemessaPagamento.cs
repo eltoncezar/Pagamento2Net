@@ -1,5 +1,5 @@
 ﻿using Boleto2Net.Util;
-using Pagamento2Net;
+using Pagamento2Net.Contratos;
 using Pagamento2Net.Bancos;
 using Pagamento2Net.Entidades;
 using System;
@@ -7,15 +7,19 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Boleto2Net
+namespace Pagamento2Net
 {
-    public class ArquivoRemessaPagamento
+    public class ArquivoRemessaPagamento : ICriarArquivoRemessa
     {
         private IRemessaPagamento Banco { get; set; }
         private TipoArquivo TipoArquivo { get; set; }
         private int NumeroArquivoRemessa { get; set; }
 
-        public ArquivoRemessaPagamento(Pagamento pagamento)
+        public ArquivoRemessaPagamento()
+        {
+        }
+
+        private void Initialize(Pagamento pagamento)
         {
             try
             {
@@ -57,7 +61,6 @@ namespace Boleto2Net
                 throw new Exception("Erro ao identificar o número do arquivo de remessa.", e);
             }
 
-            GerarArquivo(pagamento, null);
         }
 
         /// <summary>
@@ -67,6 +70,9 @@ namespace Boleto2Net
         /// <returns></returns>
         private void GerarArquivo(Pagamento pagamento, Stream file)
         {
+            //Faz algumas validações iniciais
+            Initialize(pagamento);
+
             ////StreamWriter arquivoRemessa = new StreamWriter(file, Encoding.GetEncoding("ISO-8859-1"));
             StreamWriter arquivoRemessa = new StreamWriter(file, Encoding.UTF8); //TODO: Alterar a codificação default
 
@@ -83,14 +89,14 @@ namespace Boleto2Net
 
             // geração do registro header do arquivo
             arquivoRemessa.WriteLine(
-                Banco.GerarHeaderRemessaPagamento(
+                Utils.RemoveCharactersEspeciais(Banco.GerarHeaderRemessaPagamento(
                     TipoArquivo,
                     pagamento.Pagador,
                     pagamento.NúmeroRemessa,
                     ref numeroRegistrosGeral
-                ));
+                    )));
 
-            // agrupa os registros por forma de lancamento (PaymentType)
+            // agrupa os registros por forma de lancamento (TipoDePagamento)
             var lotes = from d in pagamento.Documentos
                         group d by d.TipoDePagamento into g
                         select new
@@ -107,67 +113,77 @@ namespace Boleto2Net
                 valorTotalRegistrosLote = 0;
 
                 //geração do header dos lotes
-                arquivoRemessa.WriteLine(Banco.GerarHeaderLoteRemessaPagamento(
-                    tipoArquivo: TipoArquivo,
-                    payee: pagamento.Pagador,
-                    paymentType: lote.TipoPagamento,
-                    loteServico: ref loteDeServico,
-                    tipoServico: ((int)lote.Documentos.First().ServiceType).ToString(),
-                    numeroArquivoRemessa: NumeroArquivoRemessa,
-                    numeroRegistroGeral: ref numeroRegistrosGeral));
+                string headerLote = Utils.RemoveCharactersEspeciais(Banco.GerarHeaderLoteRemessaPagamento(
+                        tipoArquivo: TipoArquivo,
+                        pagador: pagamento.Pagador,
+                        tipoPagamento: lote.TipoPagamento,
+                        loteServico: ref loteDeServico,
+                        tipoServico: ((int)lote.Documentos.First().TipoDeServiço).ToString(),
+                        numeroArquivoRemessa: NumeroArquivoRemessa,
+                        numeroRegistroGeral: ref numeroRegistrosGeral,
+                        numeroRegistrosLote: ref numeroRegistrosLote
+                        ));
 
-                foreach (Documento documento in lote.Documentos)
+                //Se nao vier vazio escreve a linha no arquivo
+                if (!string.IsNullOrWhiteSpace(headerLote))
+                    arquivoRemessa.WriteLine(headerLote);
+
+                foreach (var documento in lote.Documentos)
                 {
                     valorTotalRegistrosLote += documento.ValorDoPagamento;
                     valorTotalRegistrosArquivo += documento.ValorDoPagamento;
 
                     // geração dos detalhes (segmentos)
                     arquivoRemessa.WriteLine(
-                        Banco.GerarDetalheRemessaPagamento(
+                         Utils.RemoveCharactersEspeciais(Banco.GerarDetalheRemessaPagamento(
                             tipoArquivo: TipoArquivo,
                             documento: documento,
                             tipoPagamento: lote.TipoPagamento,
                             loteServico: ref loteDeServico,
                             numeroRegistroLote: ref numeroRegistrosLote,
                             numeroRegistroGeral: ref numeroRegistrosGeral
-                        ));
+                        )));
                 }
 
                 // geração do trailer do lote
-                arquivoRemessa.WriteLine(
-                    Banco.GerarTrailerLoteRemessaPagamento(
-                        TipoArquivo,
-                        ref numeroRegistrosGeral,
-                        loteDeServico,
-                        numeroRegistrosLote,
-                        valorTotalRegistrosLote
+                string trailerLote = Utils.RemoveCharactersEspeciais(Banco.GerarTrailerLoteRemessaPagamento(
+                    TipoArquivo,
+                    loteDeServico,
+                    numeroRegistrosLote,
+                    valorTotalRegistrosLote,
+                    ref numeroRegistrosGeral
                     ));
+
+                //se nao vier vazio escreve no arquivo
+                if (!string.IsNullOrWhiteSpace(trailerLote))
+                    arquivoRemessa.WriteLine(trailerLote);
             }
 
             // geração do trailer do arquivo
             arquivoRemessa.WriteLine(
-                Banco.GerarTrailerRemessaPagamento(
+                 Utils.RemoveCharactersEspeciais(Banco.GerarTrailerRemessaPagamento(
                     TipoArquivo,
                     numeroRegistrosGeral,
                     numeroLotes,
                     valorTotalRegistrosArquivo
-                ));
+                )));
 
             arquivoRemessa.Close();
             arquivoRemessa.Dispose();
             arquivoRemessa = null;
         }
 
-        //public string GenerateRemittanceFile(Pagamento pagamento)
-        //{
-        //    string fileName = Path.GetTempFileName();
+        public string GerarArquivoRemessa(Pagamento pagamento)
+        {
+            string fileName = Path.GetTempFileName();
 
-        //    using (var fileStream = new FileStream(fileName, FileMode.Create))
-        //    {
-        //        GenerateRemittance(pagamento, fileStream);
-        //    }
+            using (var fileStream = new FileStream(fileName, FileMode.Create))
+            {
+                GerarArquivo(pagamento, fileStream);
+            }
 
-        //    return File.ReadAllText(fileName);
-        //}
+            return File.ReadAllText(fileName);
+        }
+
     }
 }

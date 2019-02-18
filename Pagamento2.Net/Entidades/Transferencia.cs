@@ -1,6 +1,6 @@
-﻿using Pagamento2.Net.Enums;
-using Pagamento2Net.Enums;
+﻿using Pagamento2Net.Enums;
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace Pagamento2Net.Entidades
 {
@@ -8,18 +8,8 @@ namespace Pagamento2Net.Entidades
     /// Formas de Lançamento 01, 03, 05 e 10
     /// Crédito em Conta Corrente e Conta Poupança, DOC, TED, Caixa e OP (Recibo)
     /// </summary>
-    public class Transferência : Documento
+    public class Transferencia : Documento
     {
-        ///// <summary>
-        ///// Finalidade do DOC/TED
-        ///// </summary>
-        //public FinalityEnum Finalidade { get; set; }
-
-        ///// <summary>
-        /////
-        ///// </summary>
-        //public string AvisoAoFavorecido { get; set; }
-
         /// <summary>
         /// Código da Câmara Centralizadora
         /// </summary>
@@ -76,16 +66,6 @@ namespace Pagamento2Net.Entidades
         public string DataRealPagamentoRetorno { get; set; }
 
         /// <summary>
-        /// Valor Real do Pagamento
-        /// </summary>
-        public string ValorRealPagamento { get; set; }
-
-        /// <summary>
-        ///
-        /// </summary>
-        public Pessoa Favorecido { get; set; }
-
-        /// <summary>
         ///
         /// </summary>
         public DateTime DataRealDoPagamento { get; set; }
@@ -110,29 +90,10 @@ namespace Pagamento2Net.Entidades
         /// <summary>
         /// Finalidade DOC e TED
         /// </summary>
+        [Required]
         public FinalidadeEnum FinalidadeDocTed { get; set; }
 
-        /// <summary>
-        ///
-        /// </summary>
-        public decimal ValorDoAbatimento { get; set; }
-
-        /// <summary>
-        ///
-        /// </summary>
-        public decimal ValorDoDesconto { get; set; }
-
-        /// <summary>
-        ///
-        /// </summary>
-        public decimal ValorDaMora { get; set; }
-
-        /// <summary>
-        ///
-        /// </summary>
-        public decimal ValorDaMulta { get; set; }
-
-        public Transferência()
+        public Transferencia()
         {
             base.TipoDePagamento = TipoPagamentoEnum.Caixa;
         }
